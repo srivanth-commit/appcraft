@@ -22,6 +22,7 @@ export function AppShell() {
   const [loggingPast, setLoggingPast] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('timer');
+  const [toast, setToast] = useState<string | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light',
   );
@@ -39,6 +40,19 @@ export function AppShell() {
     if (tab === 'analytics') void analytics.reload();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    const storage = navigator.storage;
+    if (storage && typeof storage.persist === 'function') {
+      storage.persist().catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
   function handleExport() {
     void (async () => {
       const backup = await db.exportAll();
@@ -54,10 +68,23 @@ export function AppShell() {
   }
 
   async function handleImport(file: File) {
-    const text = await file.text();
-    const backup = parseBackup(text);
-    await db.restoreAll(backup.data);
-    await Promise.all([tasks.reload(), analytics.reload(), streak.refresh(), profile.reload()]);
+    const confirmed = window.confirm('This will overwrite all current data. Continue?');
+    if (!confirmed) return;
+    try {
+      const text = await file.text();
+      const backup = parseBackup(text);
+      await db.restoreAll(backup.data);
+      await Promise.all([tasks.reload(), analytics.reload(), streak.refresh(), profile.reload()]);
+      setToast('Backup imported successfully.');
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Import failed — invalid backup file.');
+    }
+  }
+
+  async function handleManualSave(input: { taskId: string | null; startedAt: number; durationMinutes: number; note: string }) {
+    await tasks.recordManualSession(input);
+    void analytics.reload();
+    void streak.refresh();
   }
 
   return (
@@ -112,8 +139,7 @@ export function AppShell() {
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[300px_1fr]">
-        {tab === 'timer' && (
-          <>
+        <div className={tab === 'timer' ? 'contents' : 'hidden'}>
             <aside className="hidden lg:block">
               <TaskPanel
                 tasks={tasks.tasks}
@@ -148,7 +174,7 @@ export function AppShell() {
                 activeTaskId={activeTaskId}
                 onSelectTask={(id) => setActiveTaskId(id)}
                 onRecordSession={tasks.recordSession}
-                onRecordManualSession={tasks.recordManualSession}
+                onRecordManualSession={handleManualSave}
                 onReload={() => {
                   void tasks.reload();
                   void analytics.reload();
@@ -161,14 +187,13 @@ export function AppShell() {
                 <section className="card w-full max-w-lg animate-in overflow-hidden" aria-label="Log past focus session">
                   <ManualSessionForm
                     tasks={tasks.tasks}
-                    onSave={tasks.recordManualSession}
+                    onSave={handleManualSave}
                     onClose={() => setLoggingPast(false)}
                   />
                 </section>
               )}
             </div>
-          </>
-        )}
+        </div>
 
         {tab === 'analytics' && (
           <div className="col-span-full">
@@ -178,7 +203,7 @@ export function AppShell() {
               currentStreak={streak.current}
               longestStreak={streak.longest}
               tasks={tasks.tasks}
-              onRecordManualSession={tasks.recordManualSession}
+              onRecordManualSession={handleManualSave}
             />
           </div>
         )}
@@ -200,6 +225,16 @@ export function AppShell() {
           void tasks.deleteTask(id);
         }}
       />
+
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 animate-in rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
 
       <TabBar active={tab} onChange={setTab} />
     </div>

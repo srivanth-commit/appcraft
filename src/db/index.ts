@@ -134,10 +134,9 @@ export const db = {
     data: { tasks: Task[]; sessions: FocusSession[]; streaks: StreakState[]; badges: Badge[]; profile: LocalProfile[] },
   ): Promise<void> {
     const dbh = await getDB();
-    const tx = dbh.transaction(['tasks', 'sessions', 'streaks', 'badges', 'profile'], 'readwrite');
-    for (const store of ['tasks', 'sessions', 'streaks', 'badges', 'profile'] as const) {
-      await tx.objectStore(store).clear();
-    }
+    const stores = ['tasks', 'sessions', 'streaks', 'badges', 'profile'] as const;
+    const tx = dbh.transaction([...stores], 'readwrite');
+    await Promise.all(stores.map((store) => tx.objectStore(store).clear()));
     await Promise.all([
       ...data.tasks.map((t) => tx.objectStore('tasks').put(t)),
       ...data.sessions.map((s) => tx.objectStore('sessions').put(s)),

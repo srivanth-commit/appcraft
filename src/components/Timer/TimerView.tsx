@@ -24,9 +24,9 @@ export function TimerView({ tasks, activeTaskId, onSelectTask, onRecordSession, 
 
   const timer = useTimer({
     activeTaskId,
-    onWorkComplete: (taskId) => {
+    onWorkComplete: (taskId, durationMinutes) => {
       playChime();
-      return onRecordSession(taskId, 25);
+      return onRecordSession(taskId, durationMinutes);
     },
     onPhaseChange: () => {
       onReload();
