@@ -5,3 +5,4 @@ ECC/
 .kilo/
 tsconfig.tsbuildinfo
 .DS_Store
+.opencode/
