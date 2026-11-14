@@ -81,7 +81,7 @@ export function useAnalytics() {
     const weekAgo = localDayStart(Date.now()) - WEEK_MS + 86_400_000;
     const view: AnalyticsState = {
       heatmap: buildHeatmap(sessions),
-      weekly: buildWeekly(sessions).slice(-12),
+      weekly: buildWeekly(sessions, 12),
       breakdown: buildTaskBreakdown(sessions, tasks),
       todayMinutes: totalFocusMinutes(sessions),
       totalSessions: sessions.length,

@@ -14,6 +14,9 @@ npm ci && npm run dev
 npm ci && npm run build && npm run preview
 ```
 
-## Backup your data
+## Data & backup
 
-Use the **Export** button in the app before clearing browser data. IndexedDB is device-local only.
+IndexedDB is stored in your browser profile and is device-local.
+It can be cleared by the browser under storage pressure or when clearing site data.
+Export your data regularly using the Export button in the app.
+Importing overwrites all existing data — keep a backup before importing.

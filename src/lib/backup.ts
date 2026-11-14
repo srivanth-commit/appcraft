@@ -41,6 +41,15 @@ export function parseBackup(raw: string): BackupPayload {
   return parsed as unknown as BackupPayload;
 }
 
+export async function importBackup(
+  raw: string,
+  restore: (data: BackupData) => Promise<void>,
+): Promise<BackupPayload> {
+  const payload = parseBackup(raw);
+  await restore(payload.data);
+  return payload;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }

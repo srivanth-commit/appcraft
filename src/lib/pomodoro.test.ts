@@ -1,4 +1,4 @@
-import { CONFIG, durationFor, nextPhase, formatTime, isWork } from './pomodoro';
+import { CONFIG, durationFor, nextPhase, formatTime, isWork, type Phase } from './pomodoro';
 import { describe, it, expect } from 'vitest';
 
 describe('pomodoro', () => {
@@ -29,5 +29,21 @@ describe('pomodoro', () => {
     expect(isWork('work')).toBe(true);
     expect(isWork('short_break')).toBe(false);
     expect(isWork('long_break')).toBe(false);
+  });
+
+  it('runs four work sessions then resets the cycle after the long break', () => {
+    let workCount = 0;
+    let phase: Phase = 'work';
+    for (let i = 0; i < CONFIG.LONG_BREAK_EVERY; i++) {
+      workCount += 1;
+      phase = nextPhase('work', workCount);
+    }
+    expect(workCount).toBe(CONFIG.LONG_BREAK_EVERY);
+    expect(phase).toBe('long_break');
+
+    workCount = 0;
+    phase = 'work';
+    workCount += 1;
+    expect(nextPhase('work', workCount)).toBe('short_break');
   });
 });

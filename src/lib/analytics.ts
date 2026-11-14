@@ -29,17 +29,37 @@ export interface DailyPoint {
   minutes: number;
 }
 
-function dayStart(ts: number): number {
+export function dayStart(ts: number): number {
   const d = new Date(ts);
-  return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function nextLocalDay(ts: number): number {
+  const d = new Date(ts);
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function mondayOfWeek(ts: number): number {
+  const d = new Date(dayStart(ts));
+  const offset = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - offset);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
 }
 
 export function buildHeatmap(sessions: FocusSession[], weeks = 12, now = Date.now()): HeatmapCell[] {
-  const start = dayStart(now) - (weeks * 7 - 1) * 86_400_000;
+  const first = new Date(mondayOfWeek(now));
+  first.setDate(first.getDate() - (weeks - 1) * 7);
+  first.setHours(0, 0, 0, 0);
+
   const map = new Map<string, number>();
+  let cursor = first.getTime();
   for (let i = 0; i < weeks * 7; i++) {
-    const d = new Date(start + i * 86_400_000);
-    map.set(toDayKey(d.getTime()), 0);
+    map.set(toDayKey(cursor), 0);
+    cursor = nextLocalDay(cursor);
   }
   for (const s of sessions) {
     const key = toDayKey(s.completed_at);
@@ -50,13 +70,16 @@ export function buildHeatmap(sessions: FocusSession[], weeks = 12, now = Date.no
   return [...map.entries()].map(([date, minutes]) => ({ date, minutes }));
 }
 
-export function buildWeekly(sessions: FocusSession[]): WeeklyPoint[] {
+export function buildWeekly(sessions: FocusSession[], limit = Number.POSITIVE_INFINITY): WeeklyPoint[] {
   const weeks = new Map<string, number>();
   for (const s of sessions) {
     const key = isoWeekKey(new Date(s.completed_at));
     weeks.set(key, (weeks.get(key) ?? 0) + s.duration_minutes / 60);
   }
-  return [...weeks.entries()].map(([week, hours]) => ({ week, hours }));
+  const points = [...weeks.entries()]
+    .map(([week, hours]) => ({ week, hours }))
+    .sort((a, b) => a.week.localeCompare(b.week));
+  return Number.isFinite(limit) ? points.slice(-limit) : points;
 }
 
 export function buildMonthly(sessions: FocusSession[], months = 6, now = Date.now()): MonthlyPoint[] {

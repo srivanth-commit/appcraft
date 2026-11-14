@@ -14,7 +14,7 @@ import { ManualSessionForm } from '../History/ManualSessionForm';
 import { ProfileMenu } from './ProfileMenu';
 import { useProfile } from '../../hooks/useProfile';
 import { db } from '../../db';
-import { parseBackup, serializeBackup } from '../../lib/backup';
+import { importBackup, serializeBackup } from '../../lib/backup';
 
 export function AppShell() {
   const offline = useOffline();
@@ -72,8 +72,7 @@ export function AppShell() {
     if (!confirmed) return;
     try {
       const text = await file.text();
-      const backup = parseBackup(text);
-      await db.restoreAll(backup.data);
+      await importBackup(text, db.restoreAll);
       await Promise.all([tasks.reload(), analytics.reload(), streak.refresh(), profile.reload()]);
       setToast('Backup imported successfully.');
     } catch (error) {
